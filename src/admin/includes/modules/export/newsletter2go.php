@@ -16,7 +16,7 @@ class Newsletter2Go
 {
 
     const MODULE_NEWSLETTER2GO_VERSION = '4.0.00';
-    const MODULE_NEWSLETTER2GO_INTEGRATION_URL = 'https://ui-staging.newsletter2go.com/integrations/connect/MOD/';
+    const MODULE_NEWSLETTER2GO_INTEGRATION_URL = 'https://ui.newsletter2go.com/integrations/connect/MOD/';
 
     public $code;
     public $title;
