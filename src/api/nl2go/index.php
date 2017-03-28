@@ -120,10 +120,6 @@ class N2GoApi
                     LEFT JOIN ' . TABLE_NEWSLETTER_RECIPIENTS . ' nr ON cu.customers_email_address = nr.customers_email_address';
 
         if (xtc_not_null($group)) {
-            if ($group == 1) {
-                return $this->getGuestSubscribers($subscribed, $fields, $limit, $offset, $emails);
-            }
-
             $conditions[] = 'cu.customers_status = ' . $group;
         }
 
@@ -144,6 +140,7 @@ class N2GoApi
             $query .= ' WHERE ' . implode(' AND ', $conditions);
         }
 
+        $query .= ' GROUP BY cu.customers_id ';
         if (xtc_not_null($limit)) {
             $offset = (xtc_not_null($offset) ? $offset : 0);
             $query .= ' LIMIT ' . $offset . ', ' . $limit;
@@ -162,6 +159,21 @@ class N2GoApi
             $customers[] = $cs;
         }
 
+        if (xtc_not_null($group) && $group == 1 && (count($customers) != $limit || $limit === '' )) {
+
+            if (xtc_not_null($limit)) {
+                $limit -= count($customers);
+            }
+
+            if (count($customers) == 0 && empty($emails)) {
+                $customerCount = json_decode($this->getCustomerCount(false));
+                $offset -= $customerCount->customers;
+            } else {
+                $offset = 0;
+            }
+            return $this->getGuestSubscribers($subscribed, $fields, $limit, $offset, $emails, $customers);
+        }
+
         $response = array(
             'success' => true,
             'message' => 'OK',
@@ -175,10 +187,27 @@ class N2GoApi
     {
         $email = (isset($this->postParams['email']) ? xtc_db_prepare_input($this->postParams['email']) : '');
         $status = (isset($this->postParams['status']) ? xtc_db_prepare_input($this->postParams['status']) : 0);
+        $table = TABLE_NEWSLETTER_RECIPIENTS;
+
         if (xtc_not_null($email) && $email) {
-            xtc_db_query("UPDATE newsletter_recipients SET mail_status = $status WHERE customers_email_address = '$email'");
-            $response = (mysql_affected_rows() > 0 ? array('success' => true, 'message' => 'Mail status successfully changed') :
-                array('success' => false, 'message' => 'There is no customer with given email'));
+            $query = 'SELECT COUNT(*) AS total FROM ' . $table .' WHERE customers_email_address = "' . $email . '"';
+            $countResult = xtc_db_query($query);
+            $noRecipients = xtc_db_fetch_array($countResult);
+
+            if ($noRecipients['total'] == 0) {
+                $result = $this->transformCustomerToRecipient($email, $status);
+            } else {
+                $query = 'UPDATE ' . $table . ' SET mail_status = ' . $status .
+                    ' WHERE customers_email_address = "' . $email . '"';
+                $result = xtc_db_query($query);
+            }
+
+            if ($result) {
+                $response = array('success' => true, 'message' => 'Mail status successfully changed');
+            } else {
+                $response = array('success' => false, 'message' => 'There is no customer with given email');
+            }
+
         } else {
             $response = array('success' => false, 'message' => 'Invalid parameter for email!');
         }
@@ -342,8 +371,9 @@ class N2GoApi
     /**
      * Returns json encode customer count based on group and subscribed parameters
      * @return string
+     *  @param boolean $countRecipients
      */
-    public function getCustomerCount()
+    public function getCustomerCount($countRecipients = true)
     {
         $group = (isset($this->postParams['group']) ? xtc_db_prepare_input($this->postParams['group']) : '');
         $subscribed = (isset($this->postParams['subscribed']) ? xtc_db_prepare_input($this->postParams['subscribed']) : '');
@@ -366,7 +396,7 @@ class N2GoApi
         $total = $result['total'];
 
         // Every guest that subscribes will have customer group id 1
-        if (!xtc_not_null($group) || $group == 1) {
+        if ((!xtc_not_null($group) || $group == 1) && $countRecipients) {
             $query = 'SELECT COUNT(*) AS total FROM newsletter_recipients WHERE customers_status = 1 AND customers_id = 0';
             $countQuery = xtc_db_query($query);
             $result = xtc_db_fetch_array($countQuery);
@@ -413,25 +443,36 @@ class N2GoApi
      * @param string $limit
      * @param string $offset
      * @param array $emails
+     * @param array $fullCustomers
      * @return string
      */
-    public function getGuestSubscribers($subscribed = '', $fields = array(), $limit = '', $offset = '', $emails = array())
+    public function getGuestSubscribers($subscribed = '', $fields = array(), $limit = '', $offset = '', $emails = array(), $fullCustomers = array())
     {
         $map = array(
-            'nr.mail_status' => 'mail_status',
-            'cu.customers_email_address' => 'customers_email_address',
-            'cu.customers_date_added' => 'date_added',
+            'cu.customers_email_address' => 'nr.customers_email_address',
+            'cu.customers_date_added' => 'nr.date_added',
+            'cu.customers_id' => 'nr.customers_id',
+            'cu.customers_firstname' => 'nr.customers_firstname',
+            'cu.customers_lastname' => 'nr.customers_lastname',
+            'cu.customers_status' => 'nr.customers_status',
+            'nr.mail_status' => 'nr.mail_status',
         );
-        $conditions = array('customers_status = 1');
+        $conditions = array('nr.customers_status = 1 ');
         $customers = array();
-        $query = $this->buildCustomersQuery($fields, $map) . ' FROM ' . TABLE_NEWSLETTER_RECIPIENTS;
+
+        $query = $this->buildCustomersQuery($fields, $map) . ' FROM ' . TABLE_NEWSLETTER_RECIPIENTS. ' nr LEFT JOIN ' .
+            TABLE_CUSTOMERS . ' cu ON cu.customers_email_address = nr.customers_email_address LEFT JOIN ' .
+            TABLE_ADDRESS_BOOK . ' ab ON cu.customers_id = ab.customers_id  LEFT JOIN ' .
+            TABLE_COUNTRIES . ' co ON ab.entry_country_id = co.countries_id';
+
+        $conditions[] = 'nr.customers_id = 0';
 
         if (xtc_not_null($subscribed) && $subscribed) {
-            $conditions[] = 'mail_status = ' . $subscribed;
+            $conditions[] = 'nr.mail_status = ' . $subscribed;
         }
 
         if (!empty($emails)) {
-            $conditions[] = "customers_email_address IN ('" . implode("', '", $emails) . "')";
+            $conditions[] = "nr.customers_email_address IN ('" . implode("', '", $emails) . "')";
         }
 
         if (!empty($conditions)) {
@@ -448,6 +489,7 @@ class N2GoApi
         for ($i = 0; $i < $n; $i++) {
             $customers[] = xtc_db_fetch_array($customersQuery);
         }
+        $customers = array_merge($fullCustomers, $customers);
 
         return json_encode(array('success' => true, 'message' => 'OK', 'customers' => $customers));
     }
@@ -511,6 +553,11 @@ class N2GoApi
         } else if (!in_array('cu.customers_id', $fields)) {
             //customer Id must always be present
             $fields[] = 'cu.customers_id';
+
+            if (!in_array('nr.mail_status', $fields)) {
+                //mail status must be present
+                $fields[] = 'nr.mail_status';
+            }
         }
 
         foreach ($fields as $field) {
@@ -523,6 +570,38 @@ class N2GoApi
         }
 
         return 'SELECT ' . implode(', ', $select);
+    }
+
+    /**
+     * If customer exists, create recipient with given status
+     *
+     * @param $email
+     * @param $status
+     * @return bool
+     */
+    private function transformCustomerToRecipient($email, $status){
+        $result = false;
+        $customers = array();
+        $table = TABLE_NEWSLETTER_RECIPIENTS;
+
+        $query = 'SELECT * FROM ' . TABLE_CUSTOMERS . ' WHERE customers_email_address = "' . $email . '"';
+        $customerQuery = xtc_db_query($query);
+        $n = xtc_db_num_rows($customerQuery);
+        for ($i = 0; $i < $n; $i++) {
+            $customers[] = xtc_db_fetch_array($customerQuery);
+        }
+
+        foreach ($customers as $customer) {
+            $query = 'INSERT INTO ' . $table . ' (customers_email_address, customers_id, customers_status, 
+                customers_firstname, customers_lastname, mail_status) VALUES ("' . $email . '", "' .
+                $customer['customers_id'] . '", "' . $customer['customers_status'] . '", "' .
+                $customer['customers_firstname'] . '", "' . $customer['customers_lastname'] . '", "' . $status . '")';
+            if (xtc_db_query($query)) {
+                $result = true;
+            }
+        }
+
+        return $result;
     }
 }
 
