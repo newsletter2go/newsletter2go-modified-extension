@@ -128,12 +128,12 @@ class N2GoApi
             $conditions[] = "cu.customers_last_modified >= '$time'";
         }
 
-        if (xtc_not_null($subscribed) && $subscribed) {
-            $conditions[] = 'nr.mail_status = ' . $subscribed;
+        if (xtc_not_null($subscribed) && (boolean)$subscribed) {
+            $conditions[] = 'nr.mail_status = 1';
         }
 
         if (!empty($emails)) {
-            $conditions[] = "cu.customers_email_address IN ('" . implode("', '", $emails) . "')";
+            $conditions[] = "cu.customers_email_address IN ('" . implode("', '", (array)$emails) . "')";
         }
 
         if (!empty($conditions)) {
