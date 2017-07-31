@@ -177,7 +177,7 @@ class N2GoApi
         $response = array(
             'success' => true,
             'message' => 'OK',
-            'customers' => $customers,
+            'customers' => $this->checkEncoding($customers),
         );
 
         return json_encode($response);
@@ -275,7 +275,7 @@ class N2GoApi
             $response = array(
                 'success' => true,
                 'message' => 'OK',
-                'product' => $product,
+                'product' => $this->checkEncoding($product),
             );
         } else {
             $response = array(
@@ -303,7 +303,7 @@ class N2GoApi
         if (!empty($version)) {
             $response['success'] = true;
             $response['message'] = 'OK';
-            $response['version'] = str_replace('.', '', $version['configuration_value']);
+            $response['version'] = $this->checkEncoding(str_replace('.', '', $version['configuration_value']));
         }
 
         return json_encode($response);
@@ -330,7 +330,7 @@ class N2GoApi
                 $languages[$lang['code']] = $lang['name'];
             }
 
-            $response['languages'] = $languages;
+            $response['languages'] = $this->checkEncoding($languages);
 
         } catch (Exception $exc) {
             $response['success'] = false;
@@ -365,7 +365,7 @@ class N2GoApi
             $groups[] = xtc_db_fetch_array($groupsQuery);
         }
 
-        return json_encode(array('success' => true, 'message' => 'OK', 'groups' => $groups));
+        return json_encode(array('success' => true, 'message' => 'OK', 'groups' => $this->checkEncoding($groups)));
     }
 
     /**
@@ -491,7 +491,7 @@ class N2GoApi
         }
         $customers = array_merge($fullCustomers, $customers);
 
-        return json_encode(array('success' => true, 'message' => 'OK', 'customers' => $customers));
+        return json_encode(array('success' => true, 'message' => 'OK', 'customers' => $this->checkEncoding($customers)));
     }
 
     /**
@@ -602,6 +602,38 @@ class N2GoApi
         }
 
         return $result;
+    }
+
+    /**
+     * Checks global charset
+     *
+     * @param mixed $data
+     * @return string
+     */
+    private function checkEncoding($data)
+    {
+        if ($GLOBALS['charset'] !== 'utf-8') {
+            if (is_array($data)) {
+                foreach ($data as &$value) {
+                    $value = is_array($value) ? $this->checkEncoding($value) : $this->encodeToUtf8($value);
+                }
+            } else if (is_string($data)) {
+                $data = $this->encodeToUtf8($data);
+            }
+        }
+
+        return $data;
+    }
+
+    /**
+     * Converts string to utf-8 if different
+     *
+     * @param string $value
+     * @return string
+     */
+    private function encodeToUtf8($value)
+    {
+        return mb_convert_encoding($value, 'utf-8', $GLOBALS['charset']);
     }
 }
 
