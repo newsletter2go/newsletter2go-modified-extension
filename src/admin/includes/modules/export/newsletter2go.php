@@ -15,7 +15,7 @@ define('MODULE_NEWSLETTER2GO_BUTTON_CONNECT', 'Connect to Newsletter2Go');
 class Newsletter2Go
 {
 
-    const MODULE_NEWSLETTER2GO_VERSION = '4.0.01';
+    const MODULE_NEWSLETTER2GO_VERSION = '4.0.02';
     const MODULE_NEWSLETTER2GO_INTEGRATION_URL = 'https://ui.newsletter2go.com/integrations/connect/MOD/';
 
     public $code;
@@ -68,7 +68,16 @@ class Newsletter2Go
 
         $connectUrl = self::MODULE_NEWSLETTER2GO_INTEGRATION_URL . '?' . http_build_query($queryParams);
 
-        return array('text' => '<br />' .
+        $userTitle = '<b>' . MODULE_NEWSLETTER2GO_USERNAME_TITLE . '</b><br />' .
+            MODULE_NEWSLETTER2GO_USERNAME_DESC . '<br />';
+        $apiTitle = '<b>' . MODULE_NEWSLETTER2GO_APIKEY_TITLE . '</b><br />' .
+            MODULE_NEWSLETTER2GO_APIKEY_DESC . '<br />';
+
+        return array('text' =>
+            $userTitle . xtc_draw_input_field('configuration[MODULE_NEWSLETTER2GO_USERNAME]', $this->getUsername()) .
+            '<br /><br />' .
+            $apiTitle . xtc_draw_input_field('configuration[MODULE_NEWSLETTER2GO_APIKEY]', $this->getApiKey()) .
+            '<br /><br /><br />' .
             xtc_button_link(MODULE_NEWSLETTER2GO_BUTTON_CONNECT, $connectUrl, 'target="_blank"') . ' ' .
             xtc_button(BUTTON_SAVE) . ' ' .
             xtc_button_link(BUTTON_CANCEL, xtc_href_link(FILENAME_MODULE_EXPORT, 'set=' . $_GET['set'] . '&module=newsletter2go'))
@@ -91,7 +100,7 @@ class Newsletter2Go
 
     public function keys()
     {
-        return array('MODULE_NEWSLETTER2GO_USERNAME', 'MODULE_NEWSLETTER2GO_APIKEY');
+        return array();
     }
 
     private function getVersion(){
