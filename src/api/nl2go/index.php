@@ -437,7 +437,6 @@ class N2GoApi
     }
 
     /**
-     * @param string $hours
      * @param string $subscribed
      * @param array $fields
      * @param string $limit
