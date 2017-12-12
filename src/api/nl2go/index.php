@@ -39,7 +39,7 @@ class N2GoApi
 
     public function __construct($action, $username, $apikey, $getParams = array(), $postParams = array())
     {
-        $response = [];
+        $response = array();
 
         try {
             xtc_db_query('SET NAMES utf8');
