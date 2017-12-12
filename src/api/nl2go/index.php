@@ -636,4 +636,4 @@ if (!isset($username) || !isset($apikey)) {
     exit;
 }
 
-$api = new N2GoApi($action, $username, $apikey, $_GET, $_POST);
+$api = new N2GoApi($action, $username, $apikey, $_GET, $_REQUEST);
