@@ -39,7 +39,12 @@ class N2GoApi
 
     public function __construct($action, $username, $apikey, $getParams = array(), $postParams = array())
     {
+        $response = [];
+
         try {
+            xtc_db_query('SET NAMES utf8');
+            xtc_db_query('SET CHARACTER SET utf8');
+
             if (xtc_not_null($apikey) && xtc_not_null($action) && xtc_not_null($username)) {
                 $this->apikey = $apikey;
                 $this->username = $username;
@@ -48,58 +53,60 @@ class N2GoApi
                 $this->connected = $this->checkApiKey();
 
                 if (!$this->connected['success']) {
-                    echo $this->ping();
+                    $response = $this->ping();
                 } else {
                     switch ($action) {
                         case 'getCustomers':
-                            echo $this->getCustomers();
+                            $response = $this->getCustomers();
                             break;
                         case 'getCustomerFields':
                             $fields = $this->getCustomerFields();
-                            echo json_encode(array('success' => true, 'message' => 'OK', 'fields' => $fields));
+                            $response = array('success' => true, 'message' => 'OK', 'fields' => $fields);
                             break;
                         case 'getCustomerGroups':
-                            echo $this->getCustomerGroups();
+                            $response = $this->getCustomerGroups();
                             break;
                         case 'getCustomerCount':
-                            echo $this->getCustomerCount();
+                            $response = $this->getCustomerCount();
                             break;
                         case 'changeMailStatus':
-                            echo $this->changeMailStatus();
+                            $response = $this->changeMailStatus();
                             break;
                         case 'getProduct':
-                            echo $this->getProduct();
+                            $response = $this->getProduct();
                             break;
                         case 'ping':
-                            echo $this->ping();
+                            $response = $this->ping();
                             break;
                         case 'getPluginVersion':
-                            echo $this->getPluginVersion();
+                            $response = $this->getPluginVersion();
                             break;
                         case 'getLanguages':
-                            echo $this->getLanguages();
+                            $response = $this->getLanguages();
                             break;
                     }
                 }
             } else {
-                echo json_encode(array('success' => false, 'message' => 'Error: Bad Request!', 'errorcode' => self::ERRNO_PLUGIN_OTHER));
+                $response = array('success' => false, 'message' => 'Error: Bad Request!', 'errorcode' => self::ERRNO_PLUGIN_OTHER);
             }
         } catch (Exception $e) {
-            echo json_encode(array('success' => false, 'message' => 'Error: Bad Request!', 'errorcode' => self::ERRNO_PLUGIN_OTHER));
+            $response = array('success' => false, 'message' => 'Error: Bad Request!', 'errorcode' => self::ERRNO_PLUGIN_OTHER);
         }
+
+        echo json_encode($response);
     }
 
     /**
      * Checks if user has connection
-     * @return string
+     * @return bool
      */
     public function ping()
     {
-        return json_encode($this->connected);
+        return $this->connected;
     }
 
     /**
-     *
+     * @return array
      */
     public function getCustomers()
     {
@@ -151,12 +158,7 @@ class N2GoApi
         $n = xtc_db_num_rows($customersQuery);
 
         for ($i = 0; $i < $n; $i++) {
-            $cs = xtc_db_fetch_array($customersQuery);
-            foreach ($cs as $key => $value) {
-                $cs[$key] = utf8_encode($value);
-            }
-
-            $customers[] = $cs;
+            $customers[] = xtc_db_fetch_array($customersQuery);
         }
 
         if (xtc_not_null($group) && $group == 1 && (count($customers) != $limit || $limit === '' )) {
@@ -177,27 +179,29 @@ class N2GoApi
         $response = array(
             'success' => true,
             'message' => 'OK',
-            'customers' => $this->checkEncoding($customers),
+            'customers' => $customers,
         );
 
-        return json_encode($response);
+        return $response;
     }
 
+    /**
+     * @return array
+     */
     public function changeMailStatus()
     {
         $email = (isset($this->postParams['email']) ? xtc_db_prepare_input($this->postParams['email']) : '');
         $status = (isset($this->postParams['status']) ? xtc_db_prepare_input($this->postParams['status']) : 0);
-        $table = TABLE_NEWSLETTER_RECIPIENTS;
 
         if (xtc_not_null($email) && $email) {
-            $query = 'SELECT COUNT(*) AS total FROM ' . $table .' WHERE customers_email_address = "' . $email . '"';
+            $query = 'SELECT COUNT(*) AS total FROM ' . TABLE_NEWSLETTER_RECIPIENTS .' WHERE customers_email_address = "' . $email . '"';
             $countResult = xtc_db_query($query);
             $noRecipients = xtc_db_fetch_array($countResult);
 
             if ($noRecipients['total'] == 0) {
                 $result = $this->transformCustomerToRecipient($email, $status);
             } else {
-                $query = 'UPDATE ' . $table . ' SET mail_status = ' . $status .
+                $query = 'UPDATE ' . TABLE_NEWSLETTER_RECIPIENTS . ' SET mail_status = ' . $status .
                     ' WHERE customers_email_address = "' . $email . '"';
                 $result = xtc_db_query($query);
             }
@@ -212,9 +216,12 @@ class N2GoApi
             $response = array('success' => false, 'message' => 'Invalid parameter for email!');
         }
 
-        return json_encode($response);
+        return $response;
     }
 
+    /**
+     * @return array
+     */
     public function getProduct()
     {
         $id = isset($this->postParams['id']) ? xtc_db_prepare_input($this->postParams['id']) : '';
@@ -227,7 +234,7 @@ class N2GoApi
         }
 
         if (!xtc_not_null($id) || !xtc_not_null($lang)) {
-            return json_encode(array('success' => false, 'message' => 'Invalid or missing parameters for getProduct request!'));
+            return array('success' => false, 'message' => 'Invalid or missing parameters for getProduct request!');
         }
 
         $query = 'SELECT 
@@ -275,7 +282,7 @@ class N2GoApi
             $response = array(
                 'success' => true,
                 'message' => 'OK',
-                'product' => $this->checkEncoding($product),
+                'product' => $product,
             );
         } else {
             $response = array(
@@ -285,9 +292,12 @@ class N2GoApi
             );
         }
 
-        return json_encode($response);
+        return $response;
     }
 
+    /**
+     * @return array
+     */
     public function getPluginVersion()
     {
         $response = array(
@@ -296,22 +306,23 @@ class N2GoApi
             'version' => null,
         );
         $table = TABLE_CONFIGURATION;
-
         $query = "SELECT * FROM $table WHERE configuration_key = 'MODULE_NEWSLETTER2GO_VERSION'";
         $versionQuery = xtc_db_query($query);
         $version = xtc_db_fetch_array($versionQuery);
+
         if (!empty($version)) {
             $response['success'] = true;
             $response['message'] = 'OK';
-            $response['version'] = $this->checkEncoding(str_replace('.', '', $version['configuration_value']));
+            $response['version'] = str_replace('.', '', $version['configuration_value']);
         }
 
-        return json_encode($response);
+        return $response;
     }
 
     /**
-     * Returns json encode array of shop's languages
-     * @return string
+     * Returns array of shop's languages
+     *
+     * @return array
      */
     public function getLanguages()
     {
@@ -330,19 +341,20 @@ class N2GoApi
                 $languages[$lang['code']] = $lang['name'];
             }
 
-            $response['languages'] = $this->checkEncoding($languages);
+            $response['languages'] = $languages;
 
         } catch (Exception $exc) {
             $response['success'] = false;
             $response['message'] = 'Failed to retrieve languages';
         }
 
-        return json_encode($response);
+        return $response;
     }
 
     /**
-     * Returns json encode customer groups with names in shops default language
-     * @return string
+     * Returns customer groups with names in shops default language
+     *
+     * @return array
      */
     public function getCustomerGroups()
     {
@@ -365,13 +377,15 @@ class N2GoApi
             $groups[] = xtc_db_fetch_array($groupsQuery);
         }
 
-        return json_encode(array('success' => true, 'message' => 'OK', 'groups' => $this->checkEncoding($groups)));
+        return array('success' => true, 'message' => 'OK', 'groups' => $groups);
     }
 
     /**
-     * Returns json encode customer count based on group and subscribed parameters
-     * @return string
-     *  @param boolean $countRecipients
+     * Returns customer count based on group and subscribed parameters
+     *
+     * @param boolean $countRecipients
+     *
+     * @return array
      */
     public function getCustomerCount($countRecipients = true)
     {
@@ -403,7 +417,7 @@ class N2GoApi
             $total += $result['total'];
         }
 
-        return json_encode(array('success' => true, 'message' => 'OK', 'customers' => $total));
+        return array('success' => true, 'message' => 'OK', 'customers' => $total);
     }
 
     /**
@@ -437,14 +451,13 @@ class N2GoApi
     }
 
     /**
-     * @param string $hours
      * @param string $subscribed
      * @param array $fields
      * @param string $limit
      * @param string $offset
      * @param array $emails
      * @param array $fullCustomers
-     * @return string
+     * @return array
      */
     public function getGuestSubscribers($subscribed = '', $fields = array(), $limit = '', $offset = '', $emails = array(), $fullCustomers = array())
     {
@@ -491,7 +504,7 @@ class N2GoApi
         }
         $customers = array_merge($fullCustomers, $customers);
 
-        return json_encode(array('success' => true, 'message' => 'OK', 'customers' => $this->checkEncoding($customers)));
+        return array('success' => true, 'message' => 'OK', 'customers' => $customers);
     }
 
     /**
@@ -603,50 +616,18 @@ class N2GoApi
 
         return $result;
     }
-
-    /**
-     * Checks global charset
-     *
-     * @param mixed $data
-     * @return string
-     */
-    private function checkEncoding($data)
-    {
-        if ($GLOBALS['charset'] !== 'utf-8') {
-            if (is_array($data)) {
-                foreach ($data as &$value) {
-                    $value = is_array($value) ? $this->checkEncoding($value) : $this->encodeToUtf8($value);
-                }
-            } else if (is_string($data)) {
-                $data = $this->encodeToUtf8($data);
-            }
-        }
-
-        return $data;
-    }
-
-    /**
-     * Converts string to utf-8 if different
-     *
-     * @param string $value
-     * @return string
-     */
-    private function encodeToUtf8($value)
-    {
-        return mb_convert_encoding($value, 'utf-8', $GLOBALS['charset']);
-    }
 }
 
 $username = isset($_SERVER['PHP_AUTH_USER']) ? $_SERVER['PHP_AUTH_USER'] : '';
 $apikey = isset($_SERVER['PHP_AUTH_PW']) ? $_SERVER['PHP_AUTH_PW'] : '';
-$action = isset($_POST['action']) ? $_POST['action'] : '';
+$action = isset($_REQUEST['action']) ? $_REQUEST['action'] : '';
 
-if (!$username && isset($_POST['username'])) {
-    $username = $_POST['username'];
+if (!$username && isset($_REQUEST['username'])) {
+    $username = $_REQUEST['username'];
 }
 
-if (!$apikey && isset($_POST['apikey'])) {
-    $apikey = $_POST['apikey'];
+if (!$apikey && isset($_REQUEST['apikey'])) {
+    $apikey = $_REQUEST['apikey'];
 }
 
 header('Content-Type: application/json');
