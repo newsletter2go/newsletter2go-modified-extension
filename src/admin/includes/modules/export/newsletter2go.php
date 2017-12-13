@@ -15,7 +15,7 @@ define('MODULE_NEWSLETTER2GO_BUTTON_CONNECT', 'Connect to Newsletter2Go');
 class Newsletter2Go
 {
 
-    const MODULE_NEWSLETTER2GO_VERSION = '4.0.02';
+    const MODULE_NEWSLETTER2GO_VERSION = '4.0.03';
     const MODULE_NEWSLETTER2GO_INTEGRATION_URL = 'https://ui.newsletter2go.com/integrations/connect/MOD/';
 
     public $code;
