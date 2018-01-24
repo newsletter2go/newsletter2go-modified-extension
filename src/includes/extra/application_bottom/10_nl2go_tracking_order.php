@@ -40,7 +40,7 @@ function getTrackingScript($id, $order, $companyId)
                 a.src=c, 
                 i.parentNode.insertBefore(a,i) 
             } 
-            (window,document,"script","//static-sandbox.newsletter2go.com/utils.js","n2g"); 
+            (window,document,"script","//static.newsletter2go.com/utils.js","n2g"); 
             n2g(\'create\', \'' . $companyId . '\'); 
             n2g(\'ecommerce:addTransaction\', ' . json_encode($transactionData) . ');';
 

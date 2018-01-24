@@ -17,8 +17,8 @@ define('MODULE_NEWSLETTER2GO_TRACKING_ORDER_DESC', 'Enable order tracking');
 class Newsletter2Go
 {
 
-    const MODULE_NEWSLETTER2GO_VERSION = '4.1.00';
-    const MODULE_NEWSLETTER2GO_INTEGRATION_URL = 'https://ui-sandbox.newsletter2go.com/integrations/connect/MOD/';
+    const MODULE_NEWSLETTER2GO_VERSION = '4.0.04';
+    const MODULE_NEWSLETTER2GO_INTEGRATION_URL = 'https://ui.newsletter2go.com/integrations/connect/MOD/';
 
     public $code;
     public $title;
