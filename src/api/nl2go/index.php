@@ -117,6 +117,7 @@ class N2GoApi
         $emails = (isset($this->postParams['emails']) ? xtc_db_prepare_input($this->postParams['emails']) : array());
         $group = (isset($this->postParams['group']) ? xtc_db_prepare_input($this->postParams['group']) : '');
         $fields = (isset($this->postParams['fields']) ? xtc_db_prepare_input($this->postParams['fields']) : array());
+        $subShopId = (isset($this->postParams['subShopId']) ? xtc_db_prepare_input($this->postParams['subShopId']) : '');
 
         $conditions = array();
         $customers = array();
@@ -141,6 +142,10 @@ class N2GoApi
 
         if (!empty($emails)) {
             $conditions[] = "cu.customers_email_address IN ('" . implode("', '", (array)$emails) . "')";
+        }
+
+        if ($subShopId != 0) {
+            $conditions[] = "cu.shop_id = $subShopId";
         }
 
         if (!empty($conditions)) {
@@ -459,7 +464,7 @@ class N2GoApi
      * @param array $fullCustomers
      * @return array
      */
-    public function getGuestSubscribers($subscribed = '', $fields = array(), $limit = '', $offset = '', $emails = array(), $fullCustomers = array())
+    public function getGuestSubscribers($subscribed = '', $fields = array(), $limit = '', $offset = '', $emails = array(), $fullCustomers = array(), $subShopId = 0)
     {
         $map = array(
             'cu.customers_email_address' => 'nr.customers_email_address',
@@ -469,6 +474,7 @@ class N2GoApi
             'cu.customers_lastname' => 'nr.customers_lastname',
             'cu.customers_status' => 'nr.customers_status',
             'nr.mail_status' => 'nr.mail_status',
+            'nr.shop_id' => 'nr.shop_id',
         );
         $conditions = array('nr.customers_status = 1 ');
         $customers = array();
@@ -486,6 +492,10 @@ class N2GoApi
 
         if (!empty($emails)) {
             $conditions[] = "nr.customers_email_address IN ('" . implode("', '", $emails) . "')";
+        }
+
+        if ($subShopId != 0) {
+            $conditions[] = "nr.shop_id = $subShopId";
         }
 
         if (!empty($conditions)) {
