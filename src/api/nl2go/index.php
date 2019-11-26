@@ -145,7 +145,7 @@ class N2GoApi
         }
 
         if ($subShopId != 0) {
-            $conditions[] = "cu.shop_id = $subShopId";
+            $conditions[] = 'cu.shop_id =' . $subShopId;
         }
 
         if (!empty($conditions)) {
@@ -495,7 +495,7 @@ class N2GoApi
         }
 
         if ($subShopId != 0) {
-            $conditions[] = "nr.shop_id = $subShopId";
+            $conditions[] = 'nr.shop_id =' . $subShopId;
         }
 
         if (!empty($conditions)) {
